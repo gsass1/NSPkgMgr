@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace NSPkgMgr
 {
+    /// <summary>
+    /// Command for installing a package
+    /// </summary>
     class CommandGet : Command
     {
         public CommandGet()
@@ -15,11 +18,13 @@ namespace NSPkgMgr
 
         public override void Execute()
         {
+            // We need more than that
             if(Args.Length == 0)
             {
                 throw new CommandInvalidArgumentCountException(this);
             }
 
+            // Check if the package exists
             string packagename = Args[0];
             if(!PackageManager.CheckPackageExists(packagename))
             {
@@ -27,6 +32,7 @@ namespace NSPkgMgr
                 return;
             }
 
+            // Don't install if it already is installed
             if(PackageManager.IsPackageInstalled(packagename))
             {
                 Console.WriteLine("'{0}' is already installed", packagename);
@@ -35,8 +41,10 @@ namespace NSPkgMgr
 
             Package package = PackageManager.GetPackageFromList(packagename);
 
+            // Packages which will be installed
             List<Package> pkgsToInstall = new List<Package>();
 
+            // Add dependencies if there are any
             if(!string.IsNullOrEmpty(package.Dependencies))
             {
                 string[] dependencies = package.Dependencies.Split(null);
@@ -49,15 +57,21 @@ namespace NSPkgMgr
                 }
             }
 
+            // Add the package then as last
             pkgsToInstall.Add(package);
 
+            // Install the packages
             PromptInstallPackages(pkgsToInstall);
 
             base.Execute();
         }
 
+        /// <summary>
+        /// Prompt the user for installation
+        /// </summary>
         void PromptInstallPackages(List<Package> packages)
         {
+            // Count the total size of the packages and add all the names to a string
             int sizeTotal = 0;
             StringBuilder builder = new StringBuilder();
             foreach(Package package in packages)
@@ -87,6 +101,7 @@ namespace NSPkgMgr
                 return;
             }
 
+            // Install everything
             foreach (Package package in packages)
             {
                 PackageManager.InstallPackage(package);

@@ -18,7 +18,6 @@ namespace NSPkgMgr
         public static Mode mode;
 
         public static String configFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\NSPkgMgr";
-
         public static String configPath = configFolder + "\\pkgmgr.conf";
         public static String pkgCachePath = configFolder + "\\packages.cache";
         public static String pkgInstalledPath = configFolder + "\\packages.installed";
@@ -29,7 +28,7 @@ namespace NSPkgMgr
 
         static void PrintUsage()
         {
-
+            // TODO
         }
 
         static void Main(string[] args)
@@ -38,29 +37,35 @@ namespace NSPkgMgr
             {
                 Console.WriteLine("NukeSoftware Package Manager DEV");
                 Command.Initialize();
-                StartupCheck();
-                ReadPackagesIntoBuffer();
+                Setup();
+
+                // If no args start interactive mode
                 if (args.Length == 0)
                 {
                     mode = NSPkgMgr.Mode.Interactive;
                     StartInteractiveMode();
                 }
+                // else execute the command by the args
                 else
                 {
                     mode = NSPkgMgr.Mode.Command;
-                    if (args.Length == 0)
+
+                    // Parse the array into a string, adding a whitespace for each
+                    StringBuilder builder = new StringBuilder();
+                    foreach (string s in args)
                     {
-                        PrintUsage();
+                        builder.Append(s + " ");
                     }
-                    else
+
+                    // Remove the last whitespace since we don't need it,
+                    // but only if we have any arguments at all
+                    if (builder.Length != 0)
                     {
-                        StringBuilder builder = new StringBuilder();
-                        foreach(string s in args)
-                        {
-                            builder.Append(s + " ");
-                        }
-                        ExecuteCommand(builder.ToString());
+                        builder.Remove(builder.Length - 1, 1);
                     }
+
+                    ExecuteCommand(builder.ToString());
+
                 }
             }
             catch(Exception e)
@@ -70,11 +75,22 @@ namespace NSPkgMgr
             }
         }
 
+        /// <summary>
+        /// Format the command line string and execute the command
+        /// </summary>
         static void ExecuteCommand(string cmdLine)
         {
+            // Split by whitespace
             string[] cmdLineSplit = cmdLine.Split(null);
+
+            // Command name is first word
             string command = cmdLineSplit[0];
+
+            // Create an args array with 0 elements so it isn't null
+            // so when don't always have to check if it's null
             string[] args = new string[0];
+
+            // Get all the other args
             int argc = cmdLineSplit.Length - 1;
             if (argc != 0)
             {
@@ -92,6 +108,9 @@ namespace NSPkgMgr
             }
         }
 
+        /// <summary>
+        /// Prompt for user input in a loop
+        /// </summary>
         static void StartInteractiveMode()
         {
             while (true)
@@ -100,7 +119,7 @@ namespace NSPkgMgr
                 string cmdLine = Console.ReadLine();
                 if (string.IsNullOrWhiteSpace(cmdLine))
                 {
-                    Console.WriteLine("Invalid argument.");
+                    Console.WriteLine("Malformed expression");
                 }
                 else
                 {
@@ -108,29 +127,35 @@ namespace NSPkgMgr
                 }
             }
         }
-        
 
-        static void StartupCheck()
-        {
-            if(File.Exists(configPath) == false)
-            {
-                Console.WriteLine("Detected that NSPkgMgr is not set up. Setting up!");
-                Setup();
-            }
-        }
-
+        /// <summary>
+        /// Create all directories we need and write the basic files
+        /// </summary>
         static void Setup()
         {
+            // Create this first
             Directory.CreateDirectory(configFolder);
-            TextWriter fileStream = new StreamWriter(configPath);
-            new XmlSerializer(typeof(Config)).Serialize(fileStream, config);
-            fileStream.Close();
+
+            // Write basic config file when no one is there
+            if (!File.Exists(configPath))
+            {
+                new XmlSerializer(typeof(Config)).Serialize(new StreamWriter(configPath), config);
+            }
+
+            // Write empty installed packages file
+            if (!File.Exists(pkgInstalledPath))
+            {
+                XmlDocument doc = new XmlDocument();
+                XmlNode pkgNode = doc.AppendChild(doc.CreateElement("InstalledPackages"));
+                doc.Save(pkgInstalledPath);
+            }
+
+            // Create the other directories
             Directory.CreateDirectory(config.IncludePath);
             Directory.CreateDirectory(config.LibraryPath);
+
+            // Get newest packages.xml
             UpdatePackageList();
-            XmlDocument doc = new XmlDocument();
-            XmlNode pkgNode = doc.AppendChild(doc.CreateElement("InstalledPackages"));
-            doc.Save(pkgInstalledPath);
         }
 
         public static Package GetPackageFromList(string pkgName)
@@ -157,17 +182,18 @@ namespace NSPkgMgr
 
         public static void RemovePackage(Package package)
         {
+            // TODO
             Console.WriteLine("Removing package '{0}'", package.Name);
         }
 
         public static void InstallPackage(Package package)
         {
-            WebClient client = new WebClient();
+            // Path of the zip file to be saved to
             string cachePath = MakePkgCachePath(package.Name);
             Console.WriteLine("Downloading from '{0}' to '{1}'", package.URL, cachePath);
             try
             {
-                client.DownloadFile(package.URL, cachePath);
+                new WebClient().DownloadFile(package.URL, cachePath);
             }
             catch (WebException e)
             {
@@ -175,11 +201,15 @@ namespace NSPkgMgr
                 return;
             }
             Console.WriteLine("Extracting...");
+            // Path of the zip file to be extracted to
             string archiveExtractPath = MakePkgArchiveCachePath(package.Name);
             ZipFile.ExtractToDirectory(cachePath, archiveExtractPath);
             
+            // Copy the include dir if it is set
             if(!string.IsNullOrEmpty(package.IncludeDir))
             {
+                // Either use the package name for the output directory
+                // or the name set by IncludeOutputDir
                 string includeDirName;
                 if(!string.IsNullOrEmpty(package.IncludeOutputDir))
                 {
@@ -193,13 +223,16 @@ namespace NSPkgMgr
                 DirectoryCopy(archiveExtractPath + "\\" + package.IncludeDir, includeDirPath, true);
             }
 
+            // Copy the library dir if it is set
             if (!string.IsNullOrEmpty(package.LibraryDir))
             {
                 DirectoryCopy(archiveExtractPath + "\\" + package.LibraryDir, config.LibraryPath, true);
             }
 
+            // Notify that the package is installed
             WritePackageIsInstalled(package.Name);
 
+            // Delete temp files
             Console.WriteLine("Cleaning up temp files");
             File.Delete(cachePath);
             Directory.Delete(archiveExtractPath, true);
@@ -218,43 +251,44 @@ namespace NSPkgMgr
             return false;
         }
 
+        /// <summary>
+        /// If no package cache list is present, download the newest one
+        /// </summary>
         public static void CheckPackageList()
         {
-            if(File.Exists(pkgCachePath) == false)
+            if(!File.Exists(pkgCachePath))
             {
                 UpdatePackageList();
             }
         }
 
-        public static void GetPackage(string name)
-        {
-            WebClient client = new WebClient();
-        }
-
+        /// <summary>
+        /// Replace the package list with a new package list from the Mirror URL
+        /// </summary>
         public static void UpdatePackageList()
         {
             Console.WriteLine("Downloading package list...");
-            WebClient client = new WebClient();
-
             try
             {
-                client.DownloadFile(config.MirrorUrl, pkgCachePath);
+                new WebClient().DownloadFile(config.MirrorUrl, pkgCachePath);
             }
             catch (WebException e)
             {
                 Console.WriteLine("Could not download package list: {0}", e.Message);
                 return;
             }
-
             ReadPackagesIntoBuffer();
         }
 
+        /// <summary>
+        /// Write all packages from the file into memory
+        /// </summary>
         static void ReadPackagesIntoBuffer()
         {
             packages.Clear();
+
             XmlDocument doc = new XmlDocument();
             doc.Load(pkgCachePath);
-
             XmlNode packagesNode = doc.ChildNodes[1];
             foreach (XmlNode pkgNode in packagesNode.ChildNodes)
             {
@@ -263,6 +297,9 @@ namespace NSPkgMgr
             }
         }
 
+        /// <summary>
+        /// Write that the package is installed in packages.installed
+        /// </summary>
         public static void WritePackageIsInstalled(string pkgName)
         {
             XmlDocument doc = new XmlDocument();
@@ -272,6 +309,7 @@ namespace NSPkgMgr
             XmlNode packageNode = packagesNode.AppendChild(doc.CreateElement("Package"));
             XmlAttribute attribName = packageNode.Attributes.Append(doc.CreateAttribute("Name"));
             attribName.Value = pkgName;
+
             doc.Save(pkgInstalledPath);
         }
 
@@ -279,12 +317,9 @@ namespace NSPkgMgr
         {
             XmlDocument doc = new XmlDocument();
             doc.Load(pkgInstalledPath);
-
-            XmlNode packagesNode = doc.FirstChild;
-
-            foreach(XmlNode node in packagesNode.ChildNodes)
+            foreach (XmlNode node in doc.FirstChild.ChildNodes)
             {
-                if(node.Attributes["Name"].InnerText == pkgName)
+                if(node.Attributes["Name"].Value == pkgName)
                 {
                     return true;
                 }
