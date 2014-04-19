@@ -44,6 +44,7 @@ namespace NSPkgMgr
             if(!remove)
             {
                 Console.WriteLine("Aborting");
+                return;
             }
 
             PackageManager.RemovePackage(pkgName);

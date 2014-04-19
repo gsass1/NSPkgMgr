@@ -56,16 +56,13 @@ namespace NSPkgMgr
                     {
                         builder.Append(s + " ");
                     }
-
                     // Remove the last whitespace since we don't need it,
                     // but only if we have any arguments at all
                     if (builder.Length != 0)
                     {
                         builder.Remove(builder.Length - 1, 1);
                     }
-
                     ExecuteCommand(builder.ToString());
-
                 }
             }
             catch(Exception e)
