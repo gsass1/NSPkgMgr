@@ -26,6 +26,7 @@ namespace NSPkgMgr
         {
             Commands.Add(new CommandGet());
             Commands.Add(new CommandSync());
+            Commands.Add(new CommandRemove());
         }
 
         /// <summary>
@@ -40,7 +41,7 @@ namespace NSPkgMgr
                 {
                     command.Args = args;
                     command.Execute();
-                    break;
+                    return;
                 }
             }
             throw new CommandException("Could not find command for " + name, null);
