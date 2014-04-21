@@ -27,6 +27,7 @@ namespace NSPkgMgr
             Commands.Add(new CommandGet());
             Commands.Add(new CommandSync());
             Commands.Add(new CommandRemove());
+            Commands.Add(new CommandListPkgs());
         }
 
         /// <summary>
