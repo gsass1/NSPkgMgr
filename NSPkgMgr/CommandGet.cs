@@ -1,4 +1,24 @@
-﻿using System;
+﻿/*
+===============================================================================
+    NSPkgMgr
+    Copyright (C) 2014  Gian Sass
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+===============================================================================
+ */
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,6 +31,8 @@ namespace NSPkgMgr
     /// </summary>
     class CommandGet : Command
     {
+        bool force = false;
+
         public CommandGet()
         {
             Name = "get";
@@ -22,6 +44,11 @@ namespace NSPkgMgr
             if(Args.Length == 0)
             {
                 throw new CommandInvalidArgumentCountException(this);
+            }
+
+            if(Args.Length > 1 && Args[1] == "-y")
+            {
+                force = true;
             }
 
             // Check if the package exists
@@ -80,25 +107,27 @@ namespace NSPkgMgr
                 builder.Append(package.Name + " ");
             }
 
-            Console.WriteLine("Download package(s) {0}, size: {1}KB? [y|n]", builder.ToString(), sizeTotal);
-
-            string answer = Console.ReadLine();
-
-            bool download = false;
-
-            switch (answer)
+            if (!force)
             {
-                case "y":
-                case "yes":
-                    download = true;
-                    break;
+                Console.WriteLine("Download package(s) {0}, size: {1}KB? [y|n]", builder.ToString(), sizeTotal);
 
-            }
+                string answer = Console.ReadLine();
 
-            if (!download)
-            {
-                Console.WriteLine("Aborting");
-                return;
+                bool download = false;
+
+                switch (answer)
+                {
+                    case "y":
+                    case "yes":
+                        download = true;
+                        break;
+                }
+
+                if (!download)
+                {
+                    Console.WriteLine("Aborting");
+                    return;
+                }
             }
 
             // Install everything
