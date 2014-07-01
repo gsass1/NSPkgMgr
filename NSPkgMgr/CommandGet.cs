@@ -46,49 +46,64 @@ namespace NSPkgMgr
                 throw new CommandInvalidArgumentCountException(this);
             }
 
-            if(Args.Length > 1 && Args[1] == "-y")
-            {
-                force = true;
-            }
-
-            // Check if the package exists
-            string packagename = Args[0];
-            if(!PackageManager.CheckPackageExists(packagename))
-            {
-                Console.WriteLine("Could not find package '{0}'", packagename);
-                return;
-            }
-
-            // Don't install if it already is installed
-            if(PackageManager.IsPackageInstalled(packagename))
-            {
-                Console.WriteLine("'{0}' is already installed", packagename);
-                return;
-            }
-
-            Package package = PackageManager.GetPackageFromList(packagename);
-
             // Packages which will be installed
             List<Package> pkgsToInstall = new List<Package>();
 
-            // Add dependencies if there are any
-            if(!string.IsNullOrEmpty(package.Dependencies))
+            foreach (string pkgName in Args)
             {
-                string[] dependencies = package.Dependencies.Split(null);
-                foreach(string s in dependencies)
+                if (pkgName == "-y")
                 {
-                    if (!PackageManager.IsPackageInstalled(s))
+                    force = true;
+                    continue;
+                }
+
+                // Check if the package exists
+                if (!PackageManager.CheckPackageExists(pkgName))
+                {
+                    Console.WriteLine("Could not find package '{0}'", pkgName);
+                    return;
+                }
+
+                // Don't install if it already is installed
+                if (PackageManager.IsPackageInstalled(pkgName))
+                {
+                    Console.WriteLine("'{0}' is already installed", pkgName);
+                    continue;
+                }
+
+                Package package = PackageManager.GetPackageFromList(pkgName);
+
+                // Add dependencies if there are any
+                if (!string.IsNullOrEmpty(package.Dependencies))
+                {
+                    string[] dependencies = package.Dependencies.Split(null);
+                    foreach (string s in dependencies)
                     {
-                        pkgsToInstall.Add(PackageManager.GetPackageFromList(s));
+                        if (!PackageManager.IsPackageInstalled(s))
+                        {
+                            // If a dependent package is listed in the arguments,
+                            // be sure to not add it twice
+                            Package pkg = PackageManager.GetPackageFromList(s);
+                            if (!pkgsToInstall.Contains(pkg))
+                            {
+                                pkgsToInstall.Add(pkg);
+                            }
+                        }
                     }
+                }
+
+                // Finally add the package
+                if (!pkgsToInstall.Contains(package))
+                {
+                    pkgsToInstall.Add(package);
                 }
             }
 
-            // Add the package then as last
-            pkgsToInstall.Add(package);
-
             // Install the packages
-            PromptInstallPackages(pkgsToInstall);
+            if (pkgsToInstall.Count != 0)
+            {
+                PromptInstallPackages(pkgsToInstall);
+            }
 
             base.Execute();
         }
@@ -117,6 +132,7 @@ namespace NSPkgMgr
 
                 switch (answer)
                 {
+                    case "":
                     case "y":
                     case "yes":
                         download = true;

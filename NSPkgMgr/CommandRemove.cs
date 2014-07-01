@@ -26,7 +26,9 @@ using System.Threading.Tasks;
 
 namespace NSPkgMgr
 {
-    // Remove a package
+    /// <summary>
+    /// Remove a package
+    /// </summary>
     class CommandRemove : Command
     {
         bool force = false;
@@ -43,27 +45,61 @@ namespace NSPkgMgr
                 throw new CommandInvalidArgumentCountException(this);
             }
 
-            if (Args.Length > 1 && Args[1] == "-y")
+            List<Package> pkgsToRemove = new List<Package>();
+
+            foreach (string pkgName in Args)
             {
-                force = true;
+                if(pkgName == "-y")
+                {
+                    force = true;
+                    continue;
+                }
+
+                if (!PackageManager.IsPackageInstalled(pkgName))
+                {
+                    Console.WriteLine("Package '{0}' is not installed", pkgName);
+                    return;
+                }
+                else
+                {
+                    Package package = PackageManager.GetPackageFromList(pkgName);
+                    if(!pkgsToRemove.Contains(package))
+                    {
+                        pkgsToRemove.Add(package);
+                    }
+                }
             }
 
-            string pkgName = Args[0];
-
-            if(!PackageManager.IsPackageInstalled(pkgName))
+            if (pkgsToRemove.Count != 0)
             {
-                Console.WriteLine("Package '{0}' is not installed", pkgName);
-                return;
+                PromptRemovePackages(pkgsToRemove);
+            }
+
+            base.Execute();
+        }
+
+        void PromptRemovePackages(List<Package> packages)
+        {
+            // Count the total size of the packages and add all the names to a string
+            int sizeTotal = 0;
+            StringBuilder builder = new StringBuilder();
+            foreach (Package package in packages)
+            {
+                sizeTotal += package.Size;
+                builder.Append(package.Name + " ");
             }
 
             if (!force)
             {
-                Console.WriteLine("Remove package {0}? [y|n]", pkgName);
+                Console.WriteLine("Remove package(s) {0}, size: {1}KB? [y|n]", builder.ToString(), sizeTotal);
+
                 string answer = Console.ReadLine();
+
                 bool remove = false;
 
                 switch (answer)
                 {
+                    case "":
                     case "y":
                     case "yes":
                         remove = true;
@@ -77,9 +113,11 @@ namespace NSPkgMgr
                 }
             }
 
-            PackageManager.RemovePackage(pkgName);
-
-            base.Execute();
+            // Remove everything
+            foreach (Package package in packages)
+            {
+                PackageManager.RemovePackage(package);
+            }
         }
     }
 }

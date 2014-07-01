@@ -197,9 +197,8 @@ namespace NSPkgMgr
             return MakePkgCachePath(packagename) + ".d";
         }
 
-        public static void RemovePackage(string pkgName)
+        public static void RemovePackage(Package package)
         {
-            Package package = GetPackageFromList(pkgName);
             Console.WriteLine("Removing package '{0}'", package.Name);
 
             XmlDocument doc = new XmlDocument();
@@ -208,7 +207,7 @@ namespace NSPkgMgr
             XmlNode packagesNode = doc.FirstChild;
             foreach(XmlNode node in packagesNode.ChildNodes)
             {
-                if(node.Attributes["Name"].InnerText == pkgName)
+                if(node.Attributes["Name"].InnerText == package.Name)
                 {
                     // Split by ;
                     string[] files = node.ChildNodes[0].InnerText.Split(';');
